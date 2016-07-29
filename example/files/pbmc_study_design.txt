@@ -1,0 +1,5 @@
+condition	experiment	forward_fastq	reverse_fastq
+Candida	Candida.1	PBMC_CAN_50_1_R1_28-08-2015.fastq.gz	PBMC_CAN_50_1_R2_28-08-2015.fastq.gz
+Candida	Candida.2	PBMC_CAN_50_2_R1_28-08-2015.fastq.gz	PBMC_CAN_50_2_R2_28-08-2015.fastq.gz
+RPMI	RPMI.1	PBMC_RPMI_50_1_R1_28-08-2015.fastq.gz	PBMC_RPMI_50_1_R2_28-08-2015.fastq.gz
+RPMI	RPMI.2	PBMC_RPMI_50_2_R1_28-08-2015.fastq.gz	PBMC_RPMI_50_2_R2_28-08-2015.fastq.gz
