@@ -270,21 +270,37 @@ class Shendure_scores:
             if dat[2] == '*':
                 count = 100 # unmapped
             else:
+                mapq = int(dat[4])
                 count = 1 # the actual location 
-
-                if len(dat) >= 20:
-                    assert dat[19].startswith('XA')
-                    xa = dat[19].split(';')
-                    for ml in xa:
-                        if ml != '':
-                            mls = ml.split(',')
-                            nm = int(mls[-1])
-                            if nm == 0:
-                                count += 1
-                else:
+                # if one good alignment is found, mapping quality will be 37
+                # mapping quality can be 25 when the best BWA alignment is unique has a number of mismatches with the reference (listed in NM tag)
+                # mapping quality can be 1,2,3 if the best alignment is unique and without mismatches, but if there are a lot of suboptimal alignments (alignments with 1 or 2 mismatches)
+                
+                xa_found = False
+                nm_found = False
+                for i in range(11, len(dat)):
+                    #assert dat[19].startswith('XA')
+                    if dat[i].startswith('XA'):
+                        xa = dat[i].split(';')
+                        xa_found = True
+                        for ml in xa:
+                            if ml != '':
+                                mls = ml.split(',')
+                                nm = int(mls[-1])
+                                if nm == 0:
+                                    count += 1
+                    elif dat[i].startswith('NM:i:'):
+                        nm = int(dat[i][5:])
+                        nm_found = True
+                if not xa_found:
+                    assert nm_found
                     # bwa omits XA tag if there are more than 100 mapping locations or only 1 location
-                    if int(dat[4]) == 0: # mapping quality has to be zero for 100 copies, oth
+                    if mapq == 0 or (mapq>0 and nm > 0): # mapping quality has to be zero for 100 copies, or it is no
                         count = 100
+                    elif mapq < 10:
+                        count = 50
+                    else:
+                        assert mapq == 37
             copy_count[read_no] = count
             cd[ seqs[read_no] ] = count
         f.close()
@@ -293,12 +309,13 @@ class Shendure_scores:
 
 
     def map_bwa_se_probes(self, ext_probe_seqs, lig_probe_seqs):
-        if True:
+        # if True:
+        if not os.path.exists(self.ext_sam):
             print "Making extension probe fastqs"
             self.make_fastq_file(ext_probe_seqs, self.ext_fastq_file)
             print "Mapping extension probes"
             self.map_bwa_se(self.args['ref_genome_fasta'], self.ext_fastq_file, self.ext_sam)
-
+        if not os.path.exists(self.lig_sam):
             print "Making ligation probe fastqs"
             self.make_fastq_file(lig_probe_seqs, self.lig_fastq_file)
             print "Mapping ligations probes"
@@ -1091,10 +1108,16 @@ def main():
         if args.target_ensembl_file is None:
             ensembl_genes = gc.get_all_ensembl_genes()
         else:
+            ensembl_genes_file = []
+            ensembl_genes_file.extend(read_file_with_ids(args.target_ensembl_file))
+            print "Read %d ensembl gene ids from %s" % (len(ensembl_genes_file), args.target_ensembl_file)
+
             ensembl_genes = []
-            if args.target_ensembl_file is not None:
-                ensembl_genes.extend(read_file_with_ids(args.target_ensembl_file))
-                print "Read %d ensembl gene ids from %s" % (len(ensembl_genes), args.target_ensembl_file)
+            for ensgene in ensembl_genes_file:
+                if ensgene in gc.geneid_to_gene:
+                    ensembl_genes.append(ensgene)
+                else:
+                    sys.stderr.write("WARNING: Input gene %s not found in GFF %s\n" % (ensgene, args.ensembl_gff))
             
             #if args.target_genes_file is not None:
             #    gene_names = read_file_with_ids(args.target_genes_file)
